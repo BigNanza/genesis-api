@@ -2,5 +2,4 @@
 __pycache__/
 classes/
 cookies.pkl
-classes.json
-user.json
+output.json

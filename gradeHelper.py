@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 # --- Configuration ---
 OUTPUT_HTML_DIRECTORY = "classes"
 BASE_URL = "https://students.ww-p.org/genesis/parents"
-# --- File reading and global STUDENT_ID have been REMOVED ---
 
 def sanitize_filename(name):
     """Removes invalid characters from a string to make it a valid filename."""
@@ -79,9 +78,9 @@ def _parse_category_weights(html_content):
             continue
     return weights
 
-def _process_class_page(session, class_name, class_details, student_id):
+def _process_class_page(session, class_name, class_details, student_id, save_html):
     """
-    (Internal helper) Fetches a single class page using the provided student_id.
+    (Internal helper) Fetches a single class page and conditionally saves the HTML.
     """
     params = {
         'tab1': 'studentdata', 'tab2': 'gradebook', 'tab3': 'coursesummary', 'studentid': student_id,
@@ -95,10 +94,15 @@ def _process_class_page(session, class_name, class_details, student_id):
     try:
         response = session.get(BASE_URL, params=params, headers=headers)
         response.raise_for_status()
-        safe_filename = sanitize_filename(class_name) + ".html"
-        output_filepath = os.path.join(OUTPUT_HTML_DIRECTORY, safe_filename)
-        with open(output_filepath, "w", encoding="utf-8") as f:
-            f.write(response.text)
+
+        # --- THIS IS THE NEW CONDITIONAL LOGIC ---
+        if save_html:
+            if not os.path.exists(OUTPUT_HTML_DIRECTORY):
+                os.makedirs(OUTPUT_HTML_DIRECTORY)
+            safe_filename = sanitize_filename(class_name) + ".html"
+            output_filepath = os.path.join(OUTPUT_HTML_DIRECTORY, safe_filename)
+            with open(output_filepath, "w", encoding="utf-8") as f:
+                f.write(response.text)
         
         grades = _parse_grades_from_html(response.text)
         weights = _parse_category_weights(response.text)
@@ -108,21 +112,18 @@ def _process_class_page(session, class_name, class_details, student_id):
         print(f"  - An error occurred while fetching data for '{class_name}': {e}")
         return [], {}
 
-def get_all_grades(session, all_classes_data, student_id):
+def get_all_grades(session, all_classes_data, student_id, save_html=True):
     """
-    Iterates through classes, passing the student_id down to the processing function.
+    Iterates through classes, passing the save_html setting down.
     """
-    if not os.path.exists(OUTPUT_HTML_DIRECTORY):
-        os.makedirs(OUTPUT_HTML_DIRECTORY)
-
     if not student_id:
         print("Error in get_all_grades: student_id was not provided.")
         return all_classes_data
 
     for class_name, class_info in all_classes_data.items():
         print(f"  - Fetching grades for: {class_name}")
-        # Pass the student_id to the internal function
-        grades_list, weights_dict = _process_class_page(session, class_name, class_info, student_id)
+        # Pass the save_html setting to the internal function
+        grades_list, weights_dict = _process_class_page(session, class_name, class_info, student_id, save_html)
         
         class_info['grades'] = grades_list
         class_info['categoryWeights'] = weights_dict

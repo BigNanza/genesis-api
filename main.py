@@ -9,8 +9,9 @@ from gradeHelper import get_all_grades
 from userHelper import get_user_summary_data
 
 # --- Configuration ---
-CLASS_DATA_FILE = "classes.json"
-USER_DATA_FILE = "user.json"
+OUTPUT_JSON_FILE = "output.json"
+# --- NEW: Set to True to save individual class HTML files, False to disable ---
+SAVE_HTML_FILES = False
 
 # --- Credentials ---
 load_dotenv()
@@ -61,23 +62,25 @@ def main():
     
     # --- Step 4: Fetch Detailed Grades for Each Class ---
     print("\n--- Fetching Grades for Each Class ---")
-    final_class_data = get_all_grades(session, classes_data, student_id)
+    # Pass the SAVE_HTML_FILES setting to the grade helper
+    final_class_data = get_all_grades(session, classes_data, student_id, save_html=SAVE_HTML_FILES)
     
-    # --- Step 5: Save All Retrieved Data ---
-    print("\n--- Saving Data to Files ---")
-    try:
-        with open(USER_DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(user_data, f, indent=4)
-        print(f"Successfully saved user summary to '{USER_DATA_FILE}'.")
-    except IOError as e:
-        print(f"Error: Could not write to file '{USER_DATA_FILE}'. Reason: {e}")
+    # --- Step 5: Combine and Save All Retrieved Data ---
+    print("\n--- Combining and Saving Data ---")
 
+    # Create the final, combined dictionary structure
+    combined_data = {
+        "user": user_data,
+        "classes": final_class_data
+    }
+
+    # Save the single combined file
     try:
-        with open(CLASS_DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(final_class_data, f, indent=4)
-        print(f"Successfully saved all class data to '{CLASS_DATA_FILE}'.")
+        with open(OUTPUT_JSON_FILE, "w", encoding="utf-8") as f:
+            json.dump(combined_data, f, indent=2)
+        print(f"Successfully saved all combined data to '{OUTPUT_JSON_FILE}'.")
     except IOError as e:
-        print(f"Error: Could not write to file '{CLASS_DATA_FILE}'. Reason: {e}")
+        print(f"Error: Could not write to file '{OUTPUT_JSON_FILE}'. Reason: {e}")
 
     print("\nProcess complete.")
 
