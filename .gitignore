@@ -1,0 +1,6 @@
+.env
+__pycache__/
+classes/
+cookies.pkl
+classes.json
+user.json
