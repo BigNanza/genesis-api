@@ -78,14 +78,14 @@ def _parse_category_weights(html_content):
             continue
     return weights
 
-def _process_class_page(session, class_name, class_details, student_id, save_html):
+def _process_class_page_for_mp(session, class_name, class_details, student_id, marking_period, save_html):
     """
-    (Internal helper) Fetches a single class page and conditionally saves the HTML.
+    (Internal helper) Fetches a single class page for a specific marking period.
     """
     params = {
         'tab1': 'studentdata', 'tab2': 'gradebook', 'tab3': 'coursesummary', 'studentid': student_id,
         'action': 'form', 'courseCode': class_details['courseCode'],
-        'courseSection': class_details['courseSelection'], 'mp': class_details['markingPeriod']
+        'courseSection': class_details['courseSelection'], 'mp': marking_period
     }
     headers = {
         "Accept": "text/html,application/xhtml+xml",
@@ -95,11 +95,11 @@ def _process_class_page(session, class_name, class_details, student_id, save_htm
         response = session.get(BASE_URL, params=params, headers=headers)
         response.raise_for_status()
 
-        # --- THIS IS THE NEW CONDITIONAL LOGIC ---
+        # Save HTML if requested
         if save_html:
             if not os.path.exists(OUTPUT_HTML_DIRECTORY):
                 os.makedirs(OUTPUT_HTML_DIRECTORY)
-            safe_filename = sanitize_filename(class_name) + ".html"
+            safe_filename = sanitize_filename(f"{class_name}_{marking_period}") + ".html"
             output_filepath = os.path.join(OUTPUT_HTML_DIRECTORY, safe_filename)
             with open(output_filepath, "w", encoding="utf-8") as f:
                 f.write(response.text)
@@ -109,24 +109,70 @@ def _process_class_page(session, class_name, class_details, student_id, save_htm
         return grades, weights
         
     except requests.exceptions.RequestException as e:
-        print(f"  - An error occurred while fetching data for '{class_name}': {e}")
+        print(f"  - An error occurred while fetching data for '{class_name}' {marking_period}: {e}")
         return [], {}
 
 def get_all_grades(session, all_classes_data, student_id, save_html=True):
     """
-    Iterates through classes, passing the save_html setting down.
+    Iterates through classes and fetches grades for all marking periods.
     """
     if not student_id:
         print("Error in get_all_grades: student_id was not provided.")
         return all_classes_data
 
+    marking_periods = ['MP1', 'MP2', 'MP3', 'MP4']
+    
     for class_name, class_info in all_classes_data.items():
         print(f"  - Fetching grades for: {class_name}")
-        # Pass the save_html setting to the internal function
-        grades_list, weights_dict = _process_class_page(session, class_name, class_info, student_id, save_html)
         
-        class_info['grades'] = grades_list
-        class_info['categoryWeights'] = weights_dict
-        time.sleep(0.5)
+        # Initialize grades dictionary for all marking periods
+        class_info['grades'] = {}
+        class_info['categoryWeights'] = {}
+        
+        # Fetch grades for each marking period
+        for mp in marking_periods:
+            print(f"    - Fetching {mp} grades...")
+            grades_list, weights_dict = _process_class_page_for_mp(
+                session, class_name, class_info, student_id, mp, save_html
+            )
+            
+            class_info['grades'][mp] = grades_list
+            class_info['categoryWeights'][mp] = weights_dict
+            # time.sleep(0.3)  # Shorter delay between MP requests
+        
+        # time.sleep(0.5)  # Longer delay between classes
+    
+    return all_classes_data
+
+def update_active_mp_grades(session, all_classes_data, student_id, active_mp, save_html=True):
+    """
+    Updates grades for only the active marking period across all classes.
+    """
+    if not student_id:
+        print("Error in update_active_mp_grades: student_id was not provided.")
+        return all_classes_data
+
+    if not active_mp:
+        print("Error in update_active_mp_grades: active_mp was not provided.")
+        return all_classes_data
+    
+    for class_name, class_info in all_classes_data.items():
+        print(f"  - Updating {active_mp} grades for: {class_name}")
+        
+        # Fetch grades for the active marking period only
+        grades_list, weights_dict = _process_class_page_for_mp(
+            session, class_name, class_info, student_id, active_mp, save_html
+        )
+        
+        # Update only the active MP data
+        if 'grades' not in class_info:
+            class_info['grades'] = {}
+        if 'categoryWeights' not in class_info:
+            class_info['categoryWeights'] = {}
+            
+        class_info['grades'][active_mp] = grades_list
+        class_info['categoryWeights'][active_mp] = weights_dict
+        
+        # time.sleep(0.3)  # Short delay between classes
     
     return all_classes_data

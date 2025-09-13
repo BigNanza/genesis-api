@@ -3,3 +3,4 @@ __pycache__/
 classes/
 cookies.pkl
 output.json
+dashboard.html

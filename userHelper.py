@@ -30,10 +30,6 @@ def _parse_user_data(html_content):
     student_id = student_id_text.find_next('span').get_text(strip=True) if student_id_text else None
     # # print(f"  DEBUG: Student ID found: '{student_id}'")
     
-    state_id_text = main_info_table.find(string=re.compile(r'State ID:'))
-    state_id = state_id_text.find_next('span').get_text(strip=True) if state_id_text else None
-    # # print(f"  DEBUG: State ID found: '{state_id}'")
-    
     grade_label_span = main_info_table.find('span', string=re.compile(r'Grade:'))
     grade = grade_label_span.find_next_sibling('span').get_text(strip=True) if grade_label_span else None
     # # print(f"  DEBUG: Grade found: '{grade}'")
@@ -45,12 +41,11 @@ def _parse_user_data(html_content):
     # # print(f"  DEBUG: School Name found: '{school_name}'")
     # # print("  --- DEBUG: Parsing complete ---")
 
-    if all(v is None for v in [student_id, state_id, grade, school_name]):
+    if all(v is None for v in [student_id, grade, school_name]):
         return None
 
     return {
         "studentID": student_id,
-        "stateID": state_id,
         "grade": grade,
         "schoolName": school_name
     }
