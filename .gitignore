@@ -4,3 +4,4 @@ classes/
 cookies.pkl
 output.json
 dashboard.html
+venv/

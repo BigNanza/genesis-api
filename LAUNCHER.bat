@@ -56,23 +56,64 @@ echo Project files found!
 :: Install/update dependencies
 echo [3/4] Installing required packages...
 echo (This may take a minute on first run)
+
+:: Try multiple installation methods
+echo Attempting installation method 1...
 pip install -r requirements.txt >nul 2>&1
 if errorlevel 1 (
+    echo Method 1 failed, trying method 2...
+    python -m pip install -r requirements.txt >nul 2>&1
+    if errorlevel 1 (
+        echo Method 2 failed, trying method 3...
+        python -m pip install --user -r requirements.txt >nul 2>&1
+        if errorlevel 1 (
+            echo.
+            echo ERROR: All installation methods failed!
+            echo.
+            echo Please try running this command manually:
+            echo python -m pip install -r requirements.txt
+            echo.
+            echo If that doesn't work, try:
+            echo python -m pip install --user -r requirements.txt
+            echo.
+            pause
+            exit /b 1
+        )
+    )
+)
+
+:: Verify installation by testing import
+echo Verifying package installation...
+python -c "import requests, bs4, lxml, dotenv, webview" >nul 2>&1
+if errorlevel 1 (
     echo.
-    echo  Standard installation failed, trying alternative method...
-    python -m pip install --user -r requirements.txt >nul 2>&1
+    echo  Packages installed but not accessible. Trying to fix...
+    echo.
+    echo Force installing packages...
+    python -m pip install --force-reinstall -r requirements.txt
+    
+    :: Test again
+    python -c "import requests, bs4, lxml, dotenv, webview" >nul 2>&1
     if errorlevel 1 (
         echo.
-        echo ERROR: Could not install required packages!
+        echo ERROR: Required packages are still not working!
         echo.
-        echo Try running this command manually:
-        echo pip install -r requirements.txt
+        echo This might be a Python environment issue.
+        echo Try these commands manually:
+        echo.
+        echo python -m pip install --upgrade pip
+        echo python -m pip install -r requirements.txt
+        echo.
+        echo If you're still having issues, you might need to:
+        echo 1. Reinstall Python from python.org
+        echo 2. Make sure to check "Add Python to PATH"
+        echo 3. Restart your computer after installation
         echo.
         pause
         exit /b 1
     )
 )
-echo Packages installed!
+echo Packages installed and verified!
 
 :: Launch the application
 echo [4/4] Starting Genesis Grades Dashboard...
